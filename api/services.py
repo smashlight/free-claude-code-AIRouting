@@ -184,6 +184,18 @@ class ClaudeProxyService:
         try:
             _require_non_empty_messages(request_data.messages)
 
+            # Short-circuit optimizations BEFORE routing (title gen, suggestion mode, etc.)
+            # so AUTO_ROUTE doesn't waste classification on requests that never reach a provider.
+            optimized = try_optimizations(request_data, self._settings)
+            if optimized is not None:
+                trace_event(
+                    stage="routing",
+                    event="api.optimization.short_circuit",
+                    source="api",
+                    model=request_data.model,
+                )
+                return optimized
+
             if self._settings.auto_route_enabled:
                 messages_text = _last_user_message_text(request_data.messages)
                 resolved = self._model_router.resolve_with_classification(
@@ -230,15 +242,6 @@ class ClaudeProxyService:
                     ),
                 )
 
-            optimized = try_optimizations(routed.request, self._settings)
-            if optimized is not None:
-                trace_event(
-                    stage="routing",
-                    event="api.optimization.short_circuit",
-                    source="api",
-                    model=routed.request.model,
-                )
-                return optimized
             logger.debug("No optimization matched, routing to provider")
 
             provider = self._provider_getter(routed.resolved.provider_id)
