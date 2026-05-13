@@ -1,8 +1,3 @@
-<p align="right">
-  <strong>🇬🇧 English</strong> |
-  <a href="./README.ru.md">🇷🇺 Русский</a>
-</p>
-
 <div align="center">
 
 # 🤖 Free Claude Code + AUTO_ROUTE
@@ -18,6 +13,11 @@
 </div>
 
 ---
+
+<p align="right">
+  <strong>🇬🇧 English</strong> |
+  <a href="./README.ru.md">🇷🇺 Русский</a>
+</p>
 
 ## 🔥 What it is and why it exists
 
