@@ -100,25 +100,61 @@ cd free-claude-code-AIRouting
 uv run python server.py
 ```
 
-### 6. Запусти Claude Code
+### 6. Создай алиас для запуска
 
-В другом терминале:
+Прокси работает как `fcc-claude`. Добавь в `~/.zshrc` (или `~/.bashrc`):
 
 ```bash
-claude
+alias claudeds='fcc-claude'
+alias claudeds-yolo='fcc-claude -- --dangerously-skip-permissions'
+```
+
+Примени:
+
+```bash
+source ~/.zshrc
+```
+
+### 7. Запусти Claude Code через прокси
+
+В одном терминале запусти прокси:
+
+```bash
+cd free-claude-code-AIRouting
+uv run python server.py
+```
+
+В другом терминале запусти Claude Code:
+
+```bash
+claudeds
 ```
 
 Готово! 🎉 Теперь каждый твой запрос будет автоматически направляться на оптимальную модель.
 
+> **Важно:** Обычная команда `claude` запускает Claude Code напрямую к Anthropic (официальные модели, платно). Используй `claudeds` — он направляет запросы через наш прокси с AUTO_ROUTE.
+
 ---
 
-## 🤖 Альтернатива: установка через AI
+## 🤖 Установка через AI (для пользователей Windows)
 
-Скопируй этот README и отправь любой нейронке с промптом:
+Если у тебя Windows или хочешь автоматизировать установку, передай нейронке (Claude Code, ChatGPT и т.д.) этот промпт:
 
-> Прочитай этот README и выполни все шаги по установке по порядку. Отвечай только когда будет нужно что-то уточнить или когда всё установится.
+```
+Склонируй репозиторий https://github.com/smashlight/free-claude-code-AIRouting.git в папку проекта.
+Прочитай README, выполни все шаги установки и настройки прокси.
+Подключи его к DeepSeek API с моим ключом: "sk-ваш-ключ-deepseek"
 
-Она сама всё сделает шаг за шагом.
+ВАЖНО — про модель: в .env.example указаны имена моделей, но DeepSeek их иногда переименовывает.
+Перед запуском прокси сходи в API DeepSeek (GET https://api.deepseek.com/models с API ключом),
+узнай актуальные имена (скорее всего deepseek-v4-flash и deepseek-v4-pro), пропиши их в .env.
+
+Создай два алиаса:
+- claudeds — запуск Claude Code через прокси
+- claudeds-yolo — то же + --dangerously-skip-permissions
+```
+
+Нейронка сама склонирует, установит зависимости, настроит .env, проверит актуальные модели и создаст алиасы.
 
 ---
 
@@ -172,7 +208,7 @@ MODEL_OPUS="deepseek/deepseek-v4-pro"
 MODEL="deepseek/deepseek-v4-pro"
 ```
 
-Ты можешь поставить любые модели из支持的 провайдеров:
+Ты можешь поставить любые модели из поддерживаемых провайдеров:
 
 | Провайдер | Формат | Пример |
 |---|---|---|
@@ -211,8 +247,11 @@ MODEL="deepseek/deepseek-v4-pro"
 # Запустить прокси-сервер
 cd ~/free-claude-code-AIRouting && uv run python server.py
 
-# Запустить Claude Code (в другом терминале)
-claude
+# Запустить Claude Code через прокси (в другом терминале)
+claudeds
+
+# Быстрый запуск с авто-подтверждением
+claudeds-yolo
 ```
 
 ---
