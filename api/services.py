@@ -119,21 +119,41 @@ def _extract_messages_text(messages: list, max_messages: int = 5) -> str:
 def _last_user_message_text(messages: list) -> str:
     """Extract just the last real user message text for classification.
 
-    Claude Code sends the full conversation history including system prompts,
-    tool results, and assistant responses. Each session also includes a
-    ``<system-reminder>`` block as a user message. For classification we only
-    need the most recent actual user request.
+    Claude Code wraps each request in a ``<system-reminder>`` block inside
+    the user message, alongside the actual question. We need to skip the
+    reminder blocks but keep the real user text.
     """
     for msg in reversed(messages):
         role = msg.role if hasattr(msg, "role") else ""
         if role != "user":
             continue
         content = msg.content if hasattr(msg, "content") else ""
-        text = _content_to_plain_text(content)
-        # Skip Claude Code internal system-reminder blocks
-        if text.strip().startswith("<system-reminder"):
-            continue
-        return text[:500]
+        text = _extract_non_reminder_text(content)
+        if text.strip():
+            return text[:500]
+    return ""
+
+
+def _extract_non_reminder_text(content: str | list | None) -> str:
+    """Extract text from content, skipping ``<system-reminder>`` blocks."""
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        if content.strip().startswith("<system-reminder"):
+            return ""
+        return content
+    if isinstance(content, list):
+        texts: list[str] = []
+        for block in content:
+            btype = getattr(block, "type", None) or ""
+            if btype in ("tool_result", "thinking", "redacted_thinking"):
+                continue
+            text = getattr(block, "text", "") or ""
+            if text.strip().startswith("<system-reminder"):
+                continue
+            if text.strip():
+                texts.append(text)
+        return " | ".join(texts)
     return ""
 
 
