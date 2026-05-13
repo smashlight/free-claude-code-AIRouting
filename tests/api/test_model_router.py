@@ -211,6 +211,10 @@ def test_model_router_logs_mapping(settings):
 def test_auto_route_routes_simple_task_to_haiku_tier(settings):
     """SIMPLE task routes to the haiku-tier (cheapest) model."""
     settings.auto_route_enabled = True
+    settings.enable_model_thinking = False
+    settings.enable_haiku_thinking = False
+    settings.enable_sonnet_thinking = True
+    settings.enable_opus_thinking = True
     settings.model_haiku = "open_router/openrouter/free"
     settings.model_opus = "deepseek/deepseek-v4-pro"
     router = ModelRouter(settings)
@@ -230,11 +234,16 @@ def test_auto_route_routes_simple_task_to_haiku_tier(settings):
 
     assert resolved.provider_model == "openrouter/free"
     assert resolved.provider_id == "open_router"
+    assert resolved.thinking_enabled is False
 
 
 def test_auto_route_routes_complex_task_to_sonnet_tier(settings):
     """COMPLEX task routes to the sonnet-tier (flash) model."""
     settings.auto_route_enabled = True
+    settings.enable_model_thinking = False
+    settings.enable_haiku_thinking = False
+    settings.enable_sonnet_thinking = True
+    settings.enable_opus_thinking = True
     settings.model_sonnet = "deepseek/deepseek-v4-flash"
     settings.model_opus = "deepseek/deepseek-v4-pro"
     router = ModelRouter(settings)
@@ -254,11 +263,16 @@ def test_auto_route_routes_complex_task_to_sonnet_tier(settings):
 
     assert resolved.provider_model == "deepseek-v4-flash"
     assert resolved.provider_id == "deepseek"
+    assert resolved.thinking_enabled is True
 
 
 def test_auto_route_routes_very_complex_task_to_opus_tier(settings):
     """VERY_COMPLEX task also routes to the opus-tier (pro) model."""
     settings.auto_route_enabled = True
+    settings.enable_model_thinking = False
+    settings.enable_haiku_thinking = False
+    settings.enable_sonnet_thinking = True
+    settings.enable_opus_thinking = True
     settings.model_sonnet = "deepseek/deepseek-v4-flash"
     settings.model_opus = "deepseek/deepseek-v4-pro"
     router = ModelRouter(settings)
@@ -279,6 +293,7 @@ def test_auto_route_routes_very_complex_task_to_opus_tier(settings):
     assert resolved.provider_model == "deepseek-v4-pro"
     assert resolved.provider_id == "deepseek"
     assert resolved.original_model == "claude-opus-4-20250514"
+    assert resolved.thinking_enabled is True
 
 
 def test_auto_route_falls_back_to_default_when_disabled(settings):

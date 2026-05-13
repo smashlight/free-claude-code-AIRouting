@@ -109,7 +109,7 @@ def test_model_mapping(client: TestClient):
     args = _stream_response_calls[0][0]
     kwargs = _stream_response_calls[0][1]
     assert args[0].model != "claude-3-haiku-20240307"
-    assert kwargs["thinking_enabled"] is True
+    assert kwargs["thinking_enabled"] is False
 
 
 def test_error_fallbacks(client: TestClient):

@@ -183,16 +183,16 @@ class Settings(BaseSettings):
         default=5, validation_alias="PROVIDER_MAX_CONCURRENCY"
     )
     enable_model_thinking: bool = Field(
-        default=True, validation_alias="ENABLE_MODEL_THINKING"
+        default=False, validation_alias="ENABLE_MODEL_THINKING"
     )
     enable_opus_thinking: bool | None = Field(
-        default=None, validation_alias="ENABLE_OPUS_THINKING"
+        default=True, validation_alias="ENABLE_OPUS_THINKING"
     )
     enable_sonnet_thinking: bool | None = Field(
-        default=None, validation_alias="ENABLE_SONNET_THINKING"
+        default=True, validation_alias="ENABLE_SONNET_THINKING"
     )
     enable_haiku_thinking: bool | None = Field(
-        default=None, validation_alias="ENABLE_HAIKU_THINKING"
+        default=False, validation_alias="ENABLE_HAIKU_THINKING"
     )
 
     # ==================== AUTO_ROUTE (Task Complexity Routing) ====================

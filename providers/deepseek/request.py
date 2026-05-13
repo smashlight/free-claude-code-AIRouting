@@ -191,7 +191,10 @@ def _has_replayable_thinking_before_tool_use(message: Mapping[str, Any]) -> bool
     if not isinstance(content, list):
         return False
 
-    has_thinking = False
+    has_reasoning_content = isinstance(message.get("reasoning_content"), str) and bool(
+        message["reasoning_content"].strip()
+    )
+    has_thinking = has_reasoning_content
     for block in content:
         if not isinstance(block, dict):
             continue
@@ -202,6 +205,72 @@ def _has_replayable_thinking_before_tool_use(message: Mapping[str, Any]) -> bool
         if btype == "tool_use":
             return has_thinking
     return False
+
+
+def _materialize_reasoning_content_for_native(messages: Any) -> Any:
+    """Replay assistant ``reasoning_content`` as native thinking blocks.
+
+    Some upstream conversion paths keep provider reasoning in the OpenAI-style
+    top-level ``reasoning_content`` field. DeepSeek's native Anthropic endpoint
+    does not accept that field, but thinking-mode tool follow-ups must replay
+    the prior assistant reasoning before the matching ``tool_use``. Convert that
+    metadata into a DeepSeek/Anthropic ``thinking`` content block before later
+    stripping the top-level helper field.
+    """
+    if not isinstance(messages, list):
+        return messages
+
+    out: list[Any] = []
+    for message in messages:
+        if not isinstance(message, dict):
+            out.append(message)
+            continue
+        if message.get("role") != "assistant":
+            out.append(message)
+            continue
+        reasoning = message.get("reasoning_content")
+        if not isinstance(reasoning, str) or not reasoning.strip():
+            out.append(message)
+            continue
+        content = message.get("content")
+        if not isinstance(content, list):
+            out.append(message)
+            continue
+
+        has_tool_use = any(
+            isinstance(block, dict) and block.get("type") == "tool_use"
+            for block in content
+        )
+        has_native_thinking_before_tool_use = False
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "thinking" and isinstance(
+                block.get("thinking"), str
+            ):
+                has_native_thinking_before_tool_use = bool(block["thinking"])
+                continue
+            if block.get("type") == "tool_use":
+                break
+        if not has_tool_use or has_native_thinking_before_tool_use:
+            out.append(message)
+            continue
+
+        new_content: list[Any] = []
+        inserted = False
+        for block in content:
+            if (
+                not inserted
+                and isinstance(block, dict)
+                and block.get("type") == "tool_use"
+            ):
+                new_content.append({"type": "thinking", "thinking": reasoning})
+                inserted = True
+            new_content.append(block)
+        new_msg = dict(message)
+        new_msg["content"] = new_content
+        out.append(new_msg)
+    return out
 
 
 def _has_tool_history(data: dict[str, Any]) -> bool:
@@ -471,6 +540,10 @@ def build_request_body(request_data: Any, *, thinking_enabled: bool) -> dict:
         data["thinking"] = thinking_payload
 
     if "messages" in data:
+        if effective_thinking_enabled:
+            data["messages"] = _materialize_reasoning_content_for_native(
+                data["messages"]
+            )
         data["messages"] = _strip_reasoning_content_when_native(
             _ensure_text_after_tool_results(
                 _normalize_tool_result_content(

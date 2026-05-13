@@ -86,8 +86,12 @@ AUTO_ROUTE_CLASSIFIER_MODEL=deepseek/deepseek-v4-flash
 # ==== Безопасность ====
 ANTHROPIC_AUTH_TOKEN="freecc"
 
-# ==== Отключение thinking (совместимость с DeepSeek) ====
+# ==== Thinking ====
+# DeepSeek V4 Flash/Pro поддерживают thinking; OpenRouter free tier остаётся без него.
 ENABLE_MODEL_THINKING=false
+ENABLE_HAIKU_THINKING=false
+ENABLE_SONNET_THINKING=true
+ENABLE_OPUS_THINKING=true
 
 # ==== Оптимизации ====
 ENABLE_NETWORK_PROBE_MOCK=true
@@ -196,6 +200,8 @@ Response (one word):
 ---
 
 ## 🔧 Как поменять модели
+
+Стандартная схема AUTO_ROUTE оставляет `MODEL_HAIKU` на OpenRouter/free без thinking, а `MODEL_SONNET` (`deepseek-v4-flash`) и `MODEL_OPUS` (`deepseek-v4-pro`) запускает с включённым thinking. Для DeepSeek thinking с tool calls важно передавать предыдущий `reasoning_content`/thinking blocks в следующих запросах; DeepSeek-адаптер сохраняет этот replay и убирает неподдерживаемый redacted thinking.
 
 В `.env` есть три тира:
 

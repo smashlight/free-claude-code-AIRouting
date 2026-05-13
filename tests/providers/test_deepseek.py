@@ -606,6 +606,50 @@ def test_strip_reasoning_content_not_forwarded(deepseek_provider):
     assert "reasoning_content" not in body["messages"][0]
 
 
+def test_tool_history_reasoning_content_becomes_native_thinking(deepseek_provider):
+    request = MessagesRequest.model_validate(
+        {
+            "model": "m",
+            "messages": [
+                {
+                    "role": "assistant",
+                    "reasoning_content": "Need the tool.",
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": "t1",
+                            "name": "Read",
+                            "input": {"file_path": "x"},
+                        }
+                    ],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": "t1",
+                            "content": "ok",
+                        }
+                    ],
+                },
+            ],
+            "thinking": {"type": "enabled", "budget_tokens": 2000},
+        }
+    )
+
+    body = deepseek_provider._build_request_body(request)
+
+    assert body["thinking"] == {"type": "enabled", "budget_tokens": 2000}
+    assistant = body["messages"][0]
+    assert "reasoning_content" not in assistant
+    assert [block["type"] for block in assistant["content"]] == [
+        "thinking",
+        "tool_use",
+    ]
+    assert assistant["content"][0]["thinking"] == "Need the tool."
+
+
 @pytest.mark.asyncio
 async def test_stream_uses_post_messages_path(deepseek_provider):
     request = MessagesRequest(
