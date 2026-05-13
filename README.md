@@ -1,3 +1,8 @@
+<p align="right">
+  <strong>🇬🇧 English</strong> |
+  <a href="./README.ru.md">🇷🇺 Русский</a>
+</p>
+
 <div align="center">
 
 # 🤖 Free Claude Code + AUTO_ROUTE
@@ -8,41 +13,41 @@
 [![Python 3.14](https://img.shields.io/badge/python-3.14-3776ab.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![GitHub smashlight](https://img.shields.io/badge/GitHub-smashlight-181717?style=for-the-badge&logo=github)](https://github.com/smashlight/free-claude-code-AIRouting)
 
-> 🔗 **Оригинальный проект:** https://github.com/Alishahryar1/free-claude-code
+> 🔗 **Original project:** https://github.com/Alishahryar1/free-claude-code
 
 </div>
 
 ---
 
-## 🔥 Что это и зачем
+## 🔥 What it is and why it exists
 
-Это прокси-сервер для Claude Code CLI. Он сидит между Claude Code и AI-моделями, и **автоматически выбирает модель под задачу**:
+This is a proxy server for Claude Code CLI. It sits between Claude Code and AI models, and **automatically chooses the right model for the task**:
 
-| Если задача | Пойдёт на | Стоимость |
+| If the task is | It goes to | Cost |
 |---|---|---|
-| ❓ Простой вопрос / чат | **OpenRouter** (бесплатные модели) | 💸 `$0` |
-| ⚡ Рефакторинг / кодогенерация | **DeepSeek V4 Flash** | ⚡ дёшево |
-| 💪 Сложная архитектура / алгоритмы | **DeepSeek V4 Pro** | 💪 мощно |
+| ❓ Simple question / chat | **OpenRouter** (free models) | 💸 `$0` |
+| ⚡ Refactoring / code generation | **DeepSeek V4 Flash** | ⚡ cheap |
+| 💪 Complex architecture / algorithms | **DeepSeek V4 Pro** | 💪 powerful |
 
-Больше не нужно думать, какую модель выбрать. Просто работаешь, а прокси сам решает.
+You no longer need to think about which model to use. Just work — the proxy decides for you.
 
 ---
 
-## 🚀 Быстрая установка (2 минуты)
+## 🚀 Quick setup (2 minutes)
 
-### 1. Установи Claude Code
+### 1. Install Claude Code
 
 ```bash
 npm install -g @anthropic-ai/claude-code
 ```
 
-### 2. Установи uv (менеджер пакетов)
+### 2. Install uv (package manager)
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-### 3. Склонируй и установи прокси
+### 3. Clone and install the proxy
 
 ```bash
 git clone https://github.com/smashlight/free-claude-code-AIRouting.git
@@ -50,218 +55,218 @@ cd free-claude-code-AIRouting
 uv tool install --force .
 ```
 
-### 4. Настрой API-ключи
+### 4. Configure API keys
 
-Создай файл `~/.config/free-claude-code/.env`:
+Create `~/.config/free-claude-code/.env`:
 
 ```bash
 mkdir -p ~/.config/free-claude-code
 ```
 
-Скопируй туда:
+Copy this into it:
 
 ```ini
-# ==== API Ключи ====
-# DeepSeek (нужен для классификации задач + моделей flash/pro)
-DEEPSEEK_API_KEY="sk-ваш-ключ-deepseek"
+# ==== API keys ====
+# DeepSeek (required for task classification + flash/pro models)
+DEEPSEEK_API_KEY="sk-your-deepseek-key"
 
-# OpenRouter (нужен для бесплатных моделей на простых задачах)
-OPENROUTER_API_KEY="sk-or-v1-ваш-ключ-openrouter"
+# OpenRouter (required for free models on simple tasks)
+OPENROUTER_API_KEY="sk-or-v1-your-openrouter-key"
 
-# ==== Модели (можно менять под себя) ====
-MODEL_OPUS="deepseek/deepseek-v4-pro"           # Самая мощная
-MODEL_SONNET="deepseek/deepseek-v4-flash"        # Средняя
-MODEL_HAIKU="open_router/openrouter/free"        # Бесплатная
-MODEL="deepseek/deepseek-v4-pro"                 # Запасная (fallback)
+# ==== Models (you can change these) ====
+MODEL_OPUS="deepseek/deepseek-v4-pro"           # Most powerful
+MODEL_SONNET="deepseek/deepseek-v4-flash"        # Medium tier
+MODEL_HAIKU="open_router/openrouter/free"        # Free tier
+MODEL="deepseek/deepseek-v4-pro"                 # Fallback
 
 # ==== AUTO_ROUTE ====
 AUTO_ROUTE_ENABLED=true
 AUTO_ROUTE_CLASSIFIER_MODEL=deepseek/deepseek-v4-flash
 
-# ==== Безопасность ====
+# ==== Security ====
 ANTHROPIC_AUTH_TOKEN="freecc"
 
-# ==== Отключение thinking (совместимость с DeepSeek) ====
+# ==== Disable thinking (DeepSeek compatibility) ====
 ENABLE_MODEL_THINKING=false
 
-# ==== Оптимизации ====
+# ==== Optimizations ====
 ENABLE_NETWORK_PROBE_MOCK=true
 ENABLE_TITLE_GENERATION_SKIP=true
 ENABLE_SUGGESTION_MODE_SKIP=true
 ENABLE_FILEPATH_EXTRACTION_MOCK=true
 ```
 
-### 5. Запусти прокси
+### 5. Start the proxy
 
-В одном терминале:
+In one terminal:
 
 ```bash
 cd free-claude-code-AIRouting
 uv run python server.py
 ```
 
-### 6. Создай алиас для запуска
+### 6. Create launch aliases
 
-Прокси работает как `fcc-claude`. Добавь в `~/.zshrc` (или `~/.bashrc`):
+The proxy exposes `fcc-claude`. Add this to `~/.zshrc` (or `~/.bashrc`):
 
 ```bash
 alias claudeds='fcc-claude'
 alias claudeds-yolo='fcc-claude -- --dangerously-skip-permissions'
 ```
 
-Примени:
+Apply it:
 
 ```bash
 source ~/.zshrc
 ```
 
-### 7. Запусти Claude Code через прокси
+### 7. Run Claude Code through the proxy
 
-В одном терминале запусти прокси:
+In one terminal, start the proxy:
 
 ```bash
 cd free-claude-code-AIRouting
 uv run python server.py
 ```
 
-В другом терминале запусти Claude Code:
+In another terminal, start Claude Code:
 
 ```bash
 claudeds
 ```
 
-Готово! 🎉 Теперь каждый твой запрос будет автоматически направляться на оптимальную модель.
+Done! 🎉 Every request is now automatically routed to the best-fit model.
 
-> **Важно:** Обычная команда `claude` запускает Claude Code напрямую к Anthropic (официальные модели, платно). Используй `claudeds` — он направляет запросы через наш прокси с AUTO_ROUTE.
-
----
-
-## 🤖 Установка через AI (для пользователей Windows)
-
-Если у тебя Windows или хочешь автоматизировать установку, передай нейронке (Claude Code, ChatGPT и т.д.) этот промпт:
-
-```
-Склонируй репозиторий https://github.com/smashlight/free-claude-code-AIRouting.git в папку проекта.
-Прочитай README, выполни все шаги установки и настройки прокси.
-Подключи его к DeepSeek API с моим ключом: "sk-ваш-ключ-deepseek"
-
-ВАЖНО — про модель: в .env.example указаны имена моделей, но DeepSeek их иногда переименовывает.
-Перед запуском прокси сходи в API DeepSeek (GET https://api.deepseek.com/models с API ключом),
-узнай актуальные имена (скорее всего deepseek-v4-flash и deepseek-v4-pro), пропиши их в .env.
-
-Создай два алиаса:
-- claudeds — запуск Claude Code через прокси
-- claudeds-yolo — то же + --dangerously-skip-permissions
-```
-
-Нейронка сама склонирует, установит зависимости, настроит .env, проверит актуальные модели и создаст алиасы.
+> **Important:** the regular `claude` command runs Claude Code directly against Anthropic (official models, paid). Use `claudeds` to route requests through this proxy with AUTO_ROUTE.
 
 ---
 
-## ⚙️ Как это работает
+## 🤖 AI-assisted setup (for Windows users)
 
-### Архитектура
+If you are on Windows or want to automate the setup, give this prompt to an AI assistant (Claude Code, ChatGPT, etc.):
 
 ```
+Clone https://github.com/smashlight/free-claude-code-AIRouting.git into a project folder.
+Read the README and complete all installation and proxy configuration steps.
+Connect it to DeepSeek API using my key: "sk-your-deepseek-key"
+
+IMPORTANT — model names: .env.example contains model names, but DeepSeek may rename models occasionally.
+Before starting the proxy, query the DeepSeek API (GET https://api.deepseek.com/models with the API key),
+check the current model names (likely deepseek-v4-flash and deepseek-v4-pro), and put them into .env.
+
+Create two aliases:
+- claudeds — run Claude Code through the proxy
+- claudeds-yolo — same, plus --dangerously-skip-permissions
+```
+
+The assistant can clone the repo, install dependencies, configure `.env`, check current model names, and create aliases for you.
+
+---
+
+## ⚙️ How it works
+
+### Architecture
+
+```text
                           ┌─ SIMPLE        → OpenRouter (free)
-Ваш запрос → Прокси ──────┼─ COMPLEX       → DeepSeek Flash
-                          └─ VERY_COMPLEX   → DeepSeek Pro
+Your request → Proxy ─────┼─ COMPLEX       → DeepSeek Flash
+                          └─ VERY_COMPLEX  → DeepSeek Pro
                                 ↑
-                        Классификатор
-                        (DeepSeek Flash,
-                         ~1.5-2 сек)
+                          Classifier
+                         (DeepSeek Flash,
+                          ~1.5–2 sec)
 ```
 
-Перед каждым запросом прокси делает быстрый классификационный вызов к DeepSeek Flash (стоит копейки, ~2 секунды). Классификатор смотрит на текст задачи и определяет её сложность. Затем запрос направляется на соответствующую модель.
+Before each request, the proxy makes a fast classification call to DeepSeek Flash (very cheap, about 2 seconds). The classifier looks at the task text and decides its complexity. Then the request is routed to the corresponding model.
 
-### Промпт классификатора
+### Classifier prompt
 
-Классификатор получает такой промпт:
+The classifier receives a prompt like this:
 
-```
+```text
 Classify this coding task complexity.
 - SIMPLE: Chat, questions, file reads, simple search, one-line fixes
 - COMPLEX: Multi-file refactoring, architecture changes, code generation
 - VERY_COMPLEX: System design, complex algorithms, performance optimization
 
-Task: {текст задачи пользователя}
+Task: {user task text}
 Response (one word):
 ```
 
 ---
 
-## 🔧 Как поменять модели
+## 🔧 Changing models
 
-В `.env` есть три тира:
+The `.env` file has three tiers:
 
 ```ini
-# Тир Haiku — для самых простых задач
+# Haiku tier — for the simplest tasks
 MODEL_HAIKU="open_router/openrouter/free"
 
-# Тир Sonnet — для средних задач
+# Sonnet tier — for medium tasks
 MODEL_SONNET="deepseek/deepseek-v4-flash"
 
-# Тир Opus — для сложных задач
+# Opus tier — for complex tasks
 MODEL_OPUS="deepseek/deepseek-v4-pro"
 
-# Запасной вариант (если модель не определилась)
+# Fallback if the model cannot be resolved
 MODEL="deepseek/deepseek-v4-pro"
 ```
 
-Ты можешь поставить любые модели из поддерживаемых провайдеров:
+You can use any model from supported providers:
 
-| Провайдер | Формат | Пример |
+| Provider | Format | Example |
 |---|---|---|
-| DeepSeek | `deepseek/имя-модели` | `deepseek/deepseek-v4-flash` |
-| OpenRouter | `open_router/имя-модели` | `open_router/anthropic/claude-sonnet-4` |
-| NVIDIA NIM | `nvidia_nim/модель` | `nvidia_nim/meta/llama-3.3-70b-instruct` |
-| LM Studio | `lmstudio/модель` | `lmstudio/qwen2.5-7b` |
-| Ollama | `ollama/модель` | `ollama/llama3.1` |
+| DeepSeek | `deepseek/model-name` | `deepseek/deepseek-v4-flash` |
+| OpenRouter | `open_router/model-name` | `open_router/anthropic/claude-sonnet-4` |
+| NVIDIA NIM | `nvidia_nim/model` | `nvidia_nim/meta/llama-3.3-70b-instruct` |
+| LM Studio | `lmstudio/model` | `lmstudio/qwen2.5-7b` |
+| Ollama | `ollama/model` | `ollama/llama3.1` |
 
 ---
 
-## 📋 Что нужно для работы
+## 📋 Requirements
 
-| Что | Где взять | Зачем |
+| What | Where to get it | Why |
 |---|---|---|
-| **DeepSeek API ключ** | https://platform.deepseek.com/api_keys | Классификация задач + модели flash/pro |
-| **OpenRouter API ключ** | https://openrouter.ai/keys | Бесплатные модели для простых задач |
-| **Claude Code CLI** | `npm install -g @anthropic-ai/claude-code` | Интерфейс для работы |
+| **DeepSeek API key** | https://platform.deepseek.com/api_keys | Task classification + flash/pro models |
+| **OpenRouter API key** | https://openrouter.ai/keys | Free models for simple tasks |
+| **Claude Code CLI** | `npm install -g @anthropic-ai/claude-code` | Main coding interface |
 
 ---
 
-## 💡 Примеры работы
+## 💡 Examples
 
-| Твой запрос | Сложность | Куда идёт |
+| Your request | Complexity | Routed to |
 |---|---|---|
-| "What is 2+2?" | SIMPLE | OpenRouter free (бесплатно) |
+| "What is 2+2?" | SIMPLE | OpenRouter free (free) |
 | "Write a bash script that finds large files" | COMPLEX | DeepSeek Flash |
 | "Design a distributed cache system" | VERY_COMPLEX | DeepSeek Pro |
 | "Refactor auth module to JWT" | COMPLEX → VERY_COMPLEX | DeepSeek Flash → Pro |
 
 ---
 
-## 📝 Команды для быстрого запуска
+## 📝 Quick launch commands
 
 ```bash
-# Запустить прокси-сервер
+# Start the proxy server
 cd ~/free-claude-code-AIRouting && uv run python server.py
 
-# Запустить Claude Code через прокси (в другом терминале)
+# Start Claude Code through the proxy (in another terminal)
 claudeds
 
-# Быстрый запуск с авто-подтверждением
+# Fast launch with auto-confirmation
 claudeds-yolo
 ```
 
 ---
 
-## 🔗 Ссылки
+## 🔗 Links
 
-- **[Оригинальный проект](https://github.com/Alishahryar1/free-claude-code)** — бесплатный Claude Code proxy
-- **[DeepSeek](https://platform.deepseek.com/)** — API ключ для DeepSeek
-- **[OpenRouter](https://openrouter.ai/)** — API ключ для OpenRouter
-- **[DeepSeek-TUI](https://github.com/Hmbown/DeepSeek-TUI)** — идея Auto Mode роутинга
+- **[Original project](https://github.com/Alishahryar1/free-claude-code)** — free Claude Code proxy
+- **[DeepSeek](https://platform.deepseek.com/)** — DeepSeek API key
+- **[OpenRouter](https://openrouter.ai/)** — OpenRouter API key
+- **[DeepSeek-TUI](https://github.com/Hmbown/DeepSeek-TUI)** — Auto Mode routing inspiration
 
 ---
 
