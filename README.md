@@ -2,6 +2,8 @@
 
 # 🤖 Free Claude Code
 
+> **Fork** of [Alishahryar1/free-claude-code](https://github.com/Alishahryar1/free-claude-code) with **AUTO_ROUTE** — automatic model selection by task complexity.
+
 Use Claude Code CLI, VS Code, JetBrains ACP, or chat bots through your own Anthropic-compatible proxy.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -14,7 +16,7 @@ Use Claude Code CLI, VS Code, JetBrains ACP, or chat bots through your own Anthr
 
 Free Claude Code routes Anthropic Messages API traffic from Claude Code to NVIDIA NIM, Kimi, Wafer, OpenRouter, DeepSeek, LM Studio, llama.cpp, or Ollama. It keeps Claude Code's client-side protocol stable while letting you choose free, paid, or local models.
 
-[Quick Start](#quick-start) · [Providers](#choose-a-provider) · [Clients](#connect-claude-code) · [Configuration](#configuration-reference) · [Development](#development)
+[Quick Start](#quick-start) · [Providers](#choose-a-provider) · [Clients](#connect-claude-code) · [Configuration](#configuration-reference) · [Development](#development) · [AUTO_ROUTE](#auto-route)
 
 </div>
 
@@ -39,12 +41,48 @@ Free Claude Code routes Anthropic Messages API traffic from Claude Code to NVIDI
 - Drop-in proxy for Claude Code's Anthropic API calls.
 - Nine provider backends: NVIDIA NIM, Kimi, Wafer, OpenRouter, DeepSeek, LM Studio, llama.cpp, Ollama, and OpenCode Zen.
 - Per-model routing: send Opus, Sonnet, Haiku, and fallback traffic to different providers.
+- **AUTO_ROUTE** — automatic task complexity classification routes SIMPLE tasks to cheap models and COMPLEX tasks to powerful ones.
 - Native Claude Code `/model` picker support through the proxy's `/v1/models` endpoint (Claude Code must opt in to Gateway model discovery; see [Model Picker](#model-picker)).
 - Streaming, tool use, reasoning/thinking block handling, and local request optimizations.
 - Optional Discord or Telegram bot wrapper for remote coding sessions.
 - Optional Usage through the VSCode extension.
 - Optional voice-note transcription through local Whisper or NVIDIA NIM.
 - Local **Admin UI** at `/admin` to edit supported proxy settings, validate changes, and check providers (loopback access only).
+
+## AUTO_ROUTE
+
+> **New in this fork** — automatic model selection based on task complexity.
+
+When enabled, each coding task is classified before routing. The proxy makes a lightweight call to `deepseek-v4-flash` (~2s) to determine complexity, then selects the optimal model:
+
+| Complexity | Tier | Example | Recommended Model |
+|---|---|---|---|
+| **SIMPLE** | Haiku | Questions, file reads, one-line fixes | `open_router/free` (cheap/free) |
+| **COMPLEX** | Sonnet | Multi-file refactoring, code generation, debugging | `deepseek-v4-flash` (fast) |
+| **VERY_COMPLEX** | Opus | System design, complex algorithms, large refactors | `deepseek-v4-pro` (powerful) |
+
+### How it works
+
+```
+User request → TaskClassifier (DeepSeek Flash, ~2s)
+               ├─ SIMPLE        → MODEL_HAIKU  (e.g. open_router/free)
+               ├─ COMPLEX       → MODEL_SONNET (e.g. deepseek-v4-flash)
+               └─ VERY_COMPLEX  → MODEL_OPUS   (e.g. deepseek-v4-pro)
+```
+
+**Configuration:**
+
+```bash
+AUTO_ROUTE_ENABLED=true
+AUTO_ROUTE_CLASSIFIER_MODEL=deepseek/deepseek-v4-flash
+AUTO_ROUTE_COMPLEXITY_THRESHOLD=0.5
+```
+
+Set `MODEL_HAIKU`, `MODEL_SONNET`, and `MODEL_OPUS` in your `.env` to define which models each tier uses.
+
+<sup>Based on [DeepSeek-TUI Auto Mode](https://github.com/Hmbown/DeepSeek-TUI) routing concept.</sup>
+
+---
 
 ## Quick Start
 
