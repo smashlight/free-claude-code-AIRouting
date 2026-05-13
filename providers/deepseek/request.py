@@ -486,23 +486,11 @@ def build_request_body(request_data: Any, *, thinking_enabled: bool) -> dict:
 
     data["stream"] = True
 
-    # Debug: log thinking-related fields for troubleshooting V4 Pro 400 errors
-    msgs = data.get("messages", [])
-    has_thinking_blocks = any(
-        isinstance(m, dict)
-        and any(
-            isinstance(b, dict) and b.get("type") in ("thinking", "redacted_thinking")
-            for b in (m.get("content") if isinstance(m.get("content"), list) else [])
-        )
-        for m in msgs
-    )
     logger.debug(
-        "DEEPSEEK_REQUEST: build done model={} msgs={} tools={} has_thinking_in_messages={} thinking_in_data={}",
+        "DEEPSEEK_REQUEST: build done model={} msgs={} tools={}",
         data.get("model"),
-        len(msgs),
+        len(data.get("messages", [])),
         len(data.get("tools", [])),
-        has_thinking_blocks,
-        "thinking" in data,
     )
 
     return data

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import inspect
-import json
 from collections.abc import AsyncIterator, Iterator
 from typing import Any, Literal
 
@@ -152,12 +151,6 @@ class AnthropicMessagesTransport(BaseProvider):
 
     async def _send_stream_request(self, body: dict) -> httpx.Response:
         """Create a streaming messages response."""
-        if self._config.log_api_error_tracebacks:
-            logger.debug(
-                "FULL_REQUEST_BODY: model={} body={}",
-                body.get("model"),
-                json.dumps(body, ensure_ascii=False, default=str),
-            )
         request = self._client.build_request(
             "POST",
             "/messages",
