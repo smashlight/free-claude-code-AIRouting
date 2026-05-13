@@ -145,7 +145,7 @@ class TaskClassifier:
             },
             json={
                 "model": self._classifier_model,
-                "max_tokens": 10,
+                "max_tokens": 50,
                 "temperature": 0,
                 "messages": [{"role": "user", "content": prompt}],
             },
@@ -155,18 +155,38 @@ class TaskClassifier:
 
     @staticmethod
     def _parse_complexity(data: dict) -> TaskComplexity:
-        """Parse DeepSeek response content for complexity classification."""
+        """Parse DeepSeek response content for complexity classification.
+
+        Searches ``text`` blocks first, then falls back to ``thinking``
+        blocks in case the model didn't finish its text output before
+        hitting ``max_tokens``.
+        """
         for block in data.get("content", []):
-            if block.get("type") != "text":
-                continue
-            text = block.get("text", "").strip().upper()
-            if "SIMPLE" in text:
-                return TaskComplexity.SIMPLE
-            if "VERY_COMPLEX" in text:
-                return TaskComplexity.VERY_COMPLEX
-            if "COMPLEX" in text:
-                return TaskComplexity.COMPLEX
+            if block.get("type") == "text":
+                text = block.get("text", "").strip().upper()
+                result = TaskClassifier._match_complexity(text)
+                if result is not None:
+                    return result
+
+        for block in data.get("content", []):
+            if block.get("type") == "thinking":
+                text = block.get("thinking", "").strip().upper()
+                result = TaskClassifier._match_complexity(text)
+                if result is not None:
+                    return result
+
         return TaskComplexity.COMPLEX
+
+    @staticmethod
+    def _match_complexity(text: str) -> TaskComplexity | None:
+        """Check if the given text contains a complexity keyword."""
+        if "SIMPLE" in text:
+            return TaskComplexity.SIMPLE
+        if "VERY_COMPLEX" in text:
+            return TaskComplexity.VERY_COMPLEX
+        if "COMPLEX" in text:
+            return TaskComplexity.COMPLEX
+        return None
 
     def close(self) -> None:
         """Close the underlying HTTP client to release connections."""
