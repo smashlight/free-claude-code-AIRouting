@@ -208,10 +208,10 @@ def test_model_router_logs_mapping(settings):
 # =============================================================================
 
 
-def test_auto_route_routes_simple_task_to_sonnet_tier(settings):
-    """SIMPLE task routes to the sonnet-tier (flash) model."""
+def test_auto_route_routes_simple_task_to_haiku_tier(settings):
+    """SIMPLE task routes to the haiku-tier (cheapest) model."""
     settings.auto_route_enabled = True
-    settings.model_sonnet = "deepseek/deepseek-v4-flash"
+    settings.model_haiku = "open_router/free"
     settings.model_opus = "deepseek/deepseek-v4-pro"
     router = ModelRouter(settings)
 
@@ -228,8 +228,8 @@ def test_auto_route_routes_simple_task_to_sonnet_tier(settings):
             "claude-sonnet-4-20250514", "What is 2+2?"
         )
 
-    assert resolved.provider_model == "deepseek-v4-flash"
-    assert resolved.provider_id == "deepseek"
+    assert resolved.provider_model == "free"
+    assert resolved.provider_id == "open_router"
 
 
 def test_auto_route_routes_complex_task_to_opus_tier(settings):

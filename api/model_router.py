@@ -92,8 +92,8 @@ class ModelRouter:
 
         When ``auto_route_enabled`` is False, behaves exactly like :meth:`resolve`.
         When enabled, classifies the task and routes to the appropriate tier:
-        - SIMPLE -> sonnet-tier model (cheaper, faster)
-        - COMPLEX / VERY_COMPLEX -> opus-tier model (more powerful)
+        - SIMPLE -> haiku-tier model (cheapest, e.g. OpenRouter free)
+        - COMPLEX / VERY_COMPLEX -> opus-tier model (most powerful)
         """
         if not self._settings.auto_route_enabled:
             return self.resolve(claude_model_name)
@@ -101,9 +101,9 @@ class ModelRouter:
         classifier = self._get_classifier()
         result = classifier.classify(messages_text)
 
-        # Route based on complexity: SIMPLE -> flash, COMPLEX+ -> pro
+        # Route based on complexity: SIMPLE -> haiku (cheapest), COMPLEX+ -> opus (powerful)
         if result.complexity == TaskComplexity.SIMPLE:
-            tier_model = "claude-sonnet-4-20250514"
+            tier_model = "claude-haiku-4-20250514"
         else:
             tier_model = "claude-opus-4-20250514"
 
