@@ -263,16 +263,31 @@ def _remove_deepseek_thinking_hints(data: dict[str, Any]) -> None:
 def sanitize_deepseek_messages_for_native(
     messages: Any, *, thinking_enabled: bool
 ) -> Any:
-    """Filter assistant content for DeepSeek: unsigned ``thinking`` is allowed; no ``redacted_thinking``."""
+    """Strip thinking content blocks from all messages.
+
+    When ``thinking_enabled`` is False all ``thinking`` and
+    ``redacted_thinking`` blocks are removed from every message
+    (not just assistant — DeepSeek V4 Pro rejects requests that
+    carry unmanaged thinking blocks).
+
+    When ``thinking_enabled`` is True only ``redacted_thinking`` is
+    removed (DeepSeek does not support it).
+    """
     if not isinstance(messages, list):
         return messages
 
+    def _has_signature(block: dict) -> bool:
+        """Check if a thinking block has a signature (signed thinking)."""
+        sig = block.get("signature")
+        return bool(sig and isinstance(sig, str))
+
     sanitized: list[Any] = []
+    strip_types = {"redacted_thinking"}
+    if not thinking_enabled:
+        strip_types.add("thinking")
+
     for message in messages:
         if not isinstance(message, dict):
-            sanitized.append(message)
-            continue
-        if message.get("role") != "assistant":
             sanitized.append(message)
             continue
         content = message.get("content")
@@ -280,23 +295,11 @@ def sanitize_deepseek_messages_for_native(
             sanitized.append(message)
             continue
 
-        if not thinking_enabled:
-            filtered = [
-                block
-                for block in content
-                if not (
-                    isinstance(block, dict)
-                    and block.get("type") in ("thinking", "redacted_thinking")
-                )
-            ]
-        else:
-            filtered = [
-                block
-                for block in content
-                if not (
-                    isinstance(block, dict) and block.get("type") == "redacted_thinking"
-                )
-            ]
+        filtered = [
+            block
+            for block in content
+            if not (isinstance(block, dict) and block.get("type") in strip_types)
+        ]
         new_msg = dict(message)
         new_msg["content"] = filtered or ""
         sanitized.append(new_msg)
@@ -449,10 +452,23 @@ def build_request_body(request_data: Any, *, thinking_enabled: bool) -> dict:
 
     data["stream"] = True
 
-    logger.debug(
-        "DEEPSEEK_REQUEST: build done model={} msgs={} tools={}",
-        data.get("model"),
-        len(data.get("messages", [])),
-        len(data.get("tools", [])),
+    # Debug: log thinking-related fields for troubleshooting V4 Pro 400 errors
+    msgs = data.get("messages", [])
+    has_thinking_blocks = any(
+        isinstance(m, dict)
+        and any(
+            isinstance(b, dict) and b.get("type") in ("thinking", "redacted_thinking")
+            for b in (m.get("content") if isinstance(m.get("content"), list) else [])
+        )
+        for m in msgs
     )
+    logger.debug(
+        "DEEPSEEK_REQUEST: build done model={} msgs={} tools={} has_thinking_in_messages={} thinking_in_data={}",
+        data.get("model"),
+        len(msgs),
+        len(data.get("tools", [])),
+        has_thinking_blocks,
+        "thinking" in data,
+    )
+
     return data
