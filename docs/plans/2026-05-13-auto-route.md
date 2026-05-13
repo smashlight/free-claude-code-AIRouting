@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Add automatic task complexity classification to `free-claude-code` proxy — simple tasks route to `deepseek-v4-flash` (cheap), complex tasks route to `deepseek-v4-pro` (powerful).
+**Goal:** Add automatic task complexity classification to `free-claude-code` proxy — simple tasks route to the configured haiku tier (OpenRouter free), complex tasks route to the sonnet tier (DeepSeek V4 Flash), and very complex tasks route to the opus tier (DeepSeek V4 Pro).
 
-**Architecture:** Synchronous `TaskClassifier` makes a fast HTTP call to DeepSeek flash API with a classification prompt (~2s latency). `ModelRouter.resolve_with_classification()` calls the classifier, selects the appropriate model tier (opus/sonnet), and delegates to existing `resolve()`.
+**Architecture:** Synchronous `TaskClassifier` makes a fast HTTP call to DeepSeek flash API with a classification prompt (~2s latency). `ModelRouter.resolve_with_classification()` calls the classifier, selects the appropriate model tier (haiku/sonnet/opus), and delegates to existing `resolve()`.
 
 **Tech Stack:** Python 3.12+, Pydantic Settings, httpx, DeepSeek Anthropic-compatible API
 
@@ -27,10 +27,6 @@ auto_route_classifier_model: str = Field(
     default="deepseek/deepseek-v4-flash",
     validation_alias="AUTO_ROUTE_CLASSIFIER_MODEL",
 )
-auto_route_complexity_threshold: float = Field(
-    default=0.5,
-    validation_alias="AUTO_ROUTE_COMPLEXITY_THRESHOLD",
-)
 ```
 
 ### Step 2: Expand model validator
@@ -44,7 +40,6 @@ def test_auto_route_settings_defaults():
     settings = Settings()
     assert settings.auto_route_enabled is False
     assert settings.auto_route_classifier_model == "deepseek/deepseek-v4-flash"
-    assert settings.auto_route_complexity_threshold == 0.5
 ```
 
 ### Step 4: Verify
@@ -324,8 +319,9 @@ def resolve_with_classification(
 
     When auto_route_enabled is False, behaves exactly like resolve().
     When enabled, classifies the task and routes to the appropriate tier:
-    - SIMPLE -> sonnet-tier model (cheaper)
-    - COMPLEX / VERY_COMPLEX -> opus-tier model (more powerful)
+    - SIMPLE -> haiku-tier model (OpenRouter free)
+    - COMPLEX -> sonnet-tier model (DeepSeek V4 Flash)
+    - VERY_COMPLEX -> opus-tier model (DeepSeek V4 Pro)
     """
     if not self._settings.auto_route_enabled:
         return self.resolve(claude_model_name)
@@ -335,6 +331,8 @@ def resolve_with_classification(
 
     # Route based on complexity
     if result.complexity == TaskComplexity.SIMPLE:
+        tier_model = "claude-haiku-4-20250514"
+    elif result.complexity == TaskComplexity.COMPLEX:
         tier_model = "claude-sonnet-4-20250514"
     else:
         tier_model = "claude-opus-4-20250514"
@@ -625,12 +623,12 @@ git commit -m "feat(api): integrate AUTO_ROUTE classification into proxy service
 # =============================================================================
 # AUTO_ROUTE: Automatic task complexity routing
 # When enabled, classifies each request before routing:
-# - SIMPLE tasks -> sonnet-tier model (cheaper, faster)
-# - COMPLEX/VERY_COMPLEX tasks -> opus-tier model (more powerful)
+# - SIMPLE tasks -> haiku-tier model (OpenRouter free)
+# - COMPLEX tasks -> sonnet-tier model (DeepSeek V4 Flash)
+# - VERY_COMPLEX tasks -> opus-tier model (DeepSeek V4 Pro)
 # =============================================================================
 AUTO_ROUTE_ENABLED=false
 AUTO_ROUTE_CLASSIFIER_MODEL=deepseek/deepseek-v4-flash
-AUTO_ROUTE_COMPLEXITY_THRESHOLD=0.5
 ```
 
 ### Step 2: Full CI check

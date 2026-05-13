@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import traceback
 import uuid
 from collections.abc import AsyncIterator, Callable
@@ -35,6 +36,10 @@ ProviderGetter = Callable[[str], BaseProvider]
 
 # Providers that use ``/chat/completions`` + Anthropic-to-OpenAI conversion (not native Messages).
 _OPENAI_CHAT_UPSTREAM_IDS = frozenset({"nvidia_nim", "opencode"})
+_SYSTEM_REMINDER_RE = re.compile(
+    r"<system-reminder\b[^>]*>.*?</system-reminder>",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def anthropic_sse_streaming_response(
@@ -79,12 +84,23 @@ def _log_unexpected_service_exception(
         logger.error("{} exc_type={}", context, type(exc).__name__)
 
 
-def _extract_messages_text(messages: list, max_messages: int = 5) -> str:
-    """Extract recent message text for AUTO_ROUTE classification.
+def _strip_system_reminders(text: str) -> str:
+    """Remove Claude Code ``<system-reminder>`` blocks from classifier input."""
+    cleaned = _SYSTEM_REMINDER_RE.sub("", text).strip()
+    if cleaned.startswith("<system-reminder"):
+        return ""
+    return cleaned
 
-    Takes the last N messages and extracts text content blocks, excluding
-    large tool results and internal thinking blocks. Each message text is
-    truncated to 500 chars to keep the classification prompt fast and cheap.
+
+def _extract_messages_text(messages: list, max_messages: int = 5) -> str:
+    """Extract a small meaningful context window for AUTO_ROUTE classification.
+
+    AUTO_ROUTE should not classify only the last user message: in normal Claude
+    Code flows the final message can be a short confirmation (``yes, proceed``)
+    or a tool-result follow-up.  This function keeps the last few conversational
+    messages, removes Claude Code system reminders and internal thinking, and
+    replaces large tool results with markers so the classifier sees task intent
+    without expensive payloads.
     """
     parts: list[str] = []
     for msg in messages[-max_messages:]:
@@ -92,7 +108,7 @@ def _extract_messages_text(messages: list, max_messages: int = 5) -> str:
         content = msg.content if hasattr(msg, "content") else ""
 
         if isinstance(content, str):
-            text = content
+            text = _strip_system_reminders(content)
         elif isinstance(content, list):
             text_blocks: list[str] = []
             for block in content:
@@ -102,59 +118,22 @@ def _extract_messages_text(messages: list, max_messages: int = 5) -> str:
                 elif btype in ("thinking", "redacted_thinking"):
                     continue  # skip internal thinking blocks
                 elif hasattr(block, "text"):
-                    text_blocks.append(block.text)
+                    cleaned = _strip_system_reminders(block.text)
+                    if cleaned:
+                        text_blocks.append(cleaned)
                 else:
                     text_blocks.append(f"[{btype}]")
             text = " | ".join(text_blocks)
         else:
             continue
 
+        if not text.strip():
+            continue
         if len(text) > 500:
             text = text[:500] + "..."
         parts.append(f"{role}: {text}")
 
     return "\n\n".join(parts)
-
-
-def _last_user_message_text(messages: list) -> str:
-    """Extract just the last real user message text for classification.
-
-    Claude Code wraps each request in a ``<system-reminder>`` block inside
-    the user message, alongside the actual question. We need to skip the
-    reminder blocks but keep the real user text.
-    """
-    for msg in reversed(messages):
-        role = msg.role if hasattr(msg, "role") else ""
-        if role != "user":
-            continue
-        content = msg.content if hasattr(msg, "content") else ""
-        text = _extract_non_reminder_text(content)
-        if text.strip():
-            return text[:500]
-    return ""
-
-
-def _extract_non_reminder_text(content: str | list | None) -> str:
-    """Extract text from content, skipping ``<system-reminder>`` blocks."""
-    if content is None:
-        return ""
-    if isinstance(content, str):
-        if content.strip().startswith("<system-reminder"):
-            return ""
-        return content
-    if isinstance(content, list):
-        texts: list[str] = []
-        for block in content:
-            btype = getattr(block, "type", None) or ""
-            if btype in ("tool_result", "thinking", "redacted_thinking"):
-                continue
-            text = getattr(block, "text", "") or ""
-            if text.strip().startswith("<system-reminder"):
-                continue
-            if text.strip():
-                texts.append(text)
-        return " | ".join(texts)
-    return ""
 
 
 def _content_to_plain_text(content: str | list | None) -> str:
@@ -217,7 +196,7 @@ class ClaudeProxyService:
                 return optimized
 
             if self._settings.auto_route_enabled:
-                messages_text = _last_user_message_text(request_data.messages)
+                messages_text = _extract_messages_text(request_data.messages)
                 resolved = self._model_router.resolve_with_classification(
                     request_data.model, messages_text
                 )

@@ -203,11 +203,6 @@ class Settings(BaseSettings):
         default="deepseek/deepseek-v4-flash",
         validation_alias="AUTO_ROUTE_CLASSIFIER_MODEL",
     )
-    auto_route_complexity_threshold: float = Field(
-        default=0.5,
-        validation_alias="AUTO_ROUTE_COMPLEXITY_THRESHOLD",
-    )
-
     # ==================== HTTP Client Timeouts ====================
     http_read_timeout: float = Field(
         default=120.0, validation_alias="HTTP_READ_TIMEOUT"
@@ -429,6 +424,18 @@ class Settings(BaseSettings):
         if provider not in SUPPORTED_PROVIDER_IDS:
             supported = ", ".join(f"'{p}'" for p in SUPPORTED_PROVIDER_IDS)
             raise ValueError(f"Invalid provider: '{provider}'. Supported: {supported}")
+        return v
+
+    @field_validator("auto_route_classifier_model")
+    @classmethod
+    def validate_auto_route_classifier_model(cls, v: str) -> str:
+        """AUTO_ROUTE classification currently uses DeepSeek's Messages API."""
+        provider = Settings.parse_provider_type(v)
+        if provider != "deepseek":
+            raise ValueError(
+                "AUTO_ROUTE_CLASSIFIER_MODEL currently supports only "
+                "DeepSeek models, e.g. deepseek/deepseek-v4-flash"
+            )
         return v
 
     @model_validator(mode="after")

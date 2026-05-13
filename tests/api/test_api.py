@@ -371,3 +371,85 @@ def test_extract_messages_text_skips_thinking_blocks():
     text = _extract_messages_text(messages)
     assert "Final answer" in text
     assert "internal reasoning" not in text
+
+
+def test_extract_messages_text_keeps_prior_context_for_short_confirmation():
+    """AUTO_ROUTE sees task intent when the last user message is only confirmation."""
+    from api.models.anthropic import Message
+    from api.services import _extract_messages_text
+
+    messages = [
+        Message(
+            role="user",
+            content="Redesign auth: JWT, refresh tokens, RBAC, migrations, tests.",
+        ),
+        Message(
+            role="assistant",
+            content="Plan: update auth middleware, database schema, and tests.",
+        ),
+        Message(role="user", content="Yes, proceed"),
+    ]
+
+    text = _extract_messages_text(messages)
+
+    assert "Redesign auth" in text
+    assert "refresh tokens" in text
+    assert "Yes, proceed" in text
+
+
+def test_extract_messages_text_tool_followup_keeps_previous_task_not_tool_payload():
+    """Tool follow-ups keep surrounding task intent without leaking file payloads."""
+    from api.models.anthropic import ContentBlockText, ContentBlockToolResult, Message
+    from api.services import _extract_messages_text
+
+    messages = [
+        Message(
+            role="user", content="Refactor the routing layer across multiple files"
+        ),
+        Message(role="assistant", content="I'll inspect the relevant files first."),
+        Message(
+            role="user",
+            content=[
+                ContentBlockToolResult(
+                    type="tool_result",
+                    tool_use_id="read1",
+                    content="very large source code payload that should not classify",
+                )
+            ],
+        ),
+        Message(role="user", content=[ContentBlockText(type="text", text="Continue")]),
+    ]
+
+    text = _extract_messages_text(messages)
+
+    assert "Refactor the routing layer" in text
+    assert "[tool_result]" in text
+    assert "very large source code payload" not in text
+    assert "Continue" in text
+
+
+def test_extract_messages_text_strips_system_reminder_blocks():
+    """Claude Code system reminders are excluded but adjacent user text survives."""
+    from api.models.anthropic import ContentBlockText, Message
+    from api.services import _extract_messages_text
+
+    messages = [
+        Message(
+            role="user",
+            content=[
+                ContentBlockText(
+                    type="text",
+                    text="<system-reminder>Do not mention this</system-reminder>",
+                ),
+                ContentBlockText(
+                    type="text", text="Implement AUTO_ROUTE context window"
+                ),
+            ],
+        )
+    ]
+
+    text = _extract_messages_text(messages)
+
+    assert "system-reminder" not in text
+    assert "Do not mention this" not in text
+    assert "Implement AUTO_ROUTE context window" in text
