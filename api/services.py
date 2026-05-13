@@ -116,6 +116,49 @@ def _extract_messages_text(messages: list, max_messages: int = 5) -> str:
     return "\n\n".join(parts)
 
 
+def _last_user_message_text(messages: list) -> str:
+    """Extract just the last real user message text for classification.
+
+    Claude Code sends the full conversation history including system prompts,
+    tool results, and assistant responses. Each session also includes a
+    ``<system-reminder>`` block as a user message. For classification we only
+    need the most recent actual user request.
+    """
+    for msg in reversed(messages):
+        role = msg.role if hasattr(msg, "role") else ""
+        if role != "user":
+            continue
+        content = msg.content if hasattr(msg, "content") else ""
+        text = _content_to_plain_text(content)
+        # Skip Claude Code internal system-reminder blocks
+        if text.strip().startswith("<system-reminder"):
+            continue
+        return text[:500]
+    return ""
+
+
+def _content_to_plain_text(content: str | list | None) -> str:
+    """Convert a message content field (str or list of blocks) to plain text."""
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        text_blocks: list[str] = []
+        for block in content:
+            btype = getattr(block, "type", None) or ""
+            if btype in ("tool_result", "thinking", "redacted_thinking"):
+                continue
+            if hasattr(block, "text"):
+                text_blocks.append(block.text)
+            elif btype == "tool_use":
+                name = getattr(block, "name", "") or ""
+                inp = getattr(block, "input", {}) or {}
+                text_blocks.append(f"[{btype}: {name}({str(inp)[:100]})]")
+        return " | ".join(text_blocks)
+    return ""
+
+
 def _require_non_empty_messages(messages: list[Any]) -> None:
     if not messages:
         raise InvalidRequestError("messages cannot be empty")
@@ -142,7 +185,7 @@ class ClaudeProxyService:
             _require_non_empty_messages(request_data.messages)
 
             if self._settings.auto_route_enabled:
-                messages_text = _extract_messages_text(request_data.messages)
+                messages_text = _last_user_message_text(request_data.messages)
                 resolved = self._model_router.resolve_with_classification(
                     request_data.model, messages_text
                 )
