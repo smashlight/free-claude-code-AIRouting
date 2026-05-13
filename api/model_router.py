@@ -11,6 +11,7 @@ from config.settings import Settings
 
 from .gateway_model_ids import decode_gateway_model_id
 from .models.anthropic import MessagesRequest, TokenCountRequest
+from .task_classifier import TaskClassifier, TaskComplexity
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +40,7 @@ class ModelRouter:
 
     def __init__(self, settings: Settings):
         self._settings = settings
+        self._task_classifier: TaskClassifier | None = None
 
     def resolve(self, claude_model_name: str) -> ResolvedModel:
         (
@@ -82,6 +84,46 @@ class ModelRouter:
             provider_model_ref=provider_model_ref,
             thinking_enabled=thinking_enabled,
         )
+
+    def resolve_with_classification(
+        self, claude_model_name: str, messages_text: str
+    ) -> ResolvedModel:
+        """Resolve model with pre-flight AUTO_ROUTE complexity classification.
+
+        When ``auto_route_enabled`` is False, behaves exactly like :meth:`resolve`.
+        When enabled, classifies the task and routes to the appropriate tier:
+        - SIMPLE -> sonnet-tier model (cheaper, faster)
+        - COMPLEX / VERY_COMPLEX -> opus-tier model (more powerful)
+        """
+        if not self._settings.auto_route_enabled:
+            return self.resolve(claude_model_name)
+
+        classifier = self._get_classifier()
+        result = classifier.classify(messages_text)
+
+        # Route based on complexity: SIMPLE -> flash, COMPLEX+ -> pro
+        if result.complexity == TaskComplexity.SIMPLE:
+            tier_model = "claude-sonnet-4-20250514"
+        else:
+            tier_model = "claude-opus-4-20250514"
+
+        resolved = self.resolve(tier_model)
+
+        logger.info(
+            "AUTO_ROUTE: {} -> {}/{} ({}ms classifier={})",
+            result.complexity,
+            resolved.provider_id,
+            resolved.provider_model,
+            result.latency_ms,
+            result.classifier_model,
+        )
+        return resolved
+
+    def _get_classifier(self) -> TaskClassifier:
+        """Lazy-init :class:`TaskClassifier` (only created if AUTO_ROUTE is used)."""
+        if self._task_classifier is None:
+            self._task_classifier = TaskClassifier(self._settings)
+        return self._task_classifier
 
     def _direct_provider_model(
         self, model_name: str

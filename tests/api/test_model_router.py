@@ -1,9 +1,10 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from api.model_router import ModelRouter
 from api.models.anthropic import Message, MessagesRequest, TokenCountRequest
+from api.task_classifier import ComplexityResult, TaskClassifier, TaskComplexity
 from config.settings import Settings
 
 
@@ -200,3 +201,123 @@ def test_model_router_logs_mapping(settings):
     assert "MODEL MAPPING" in args[0]
     assert args[1] == "claude-2.1"
     assert args[2] == "fallback-model"
+
+
+# =============================================================================
+# AUTO_ROUTE tests
+# =============================================================================
+
+
+def test_auto_route_routes_simple_task_to_sonnet_tier(settings):
+    """SIMPLE task routes to the sonnet-tier (flash) model."""
+    settings.auto_route_enabled = True
+    settings.model_sonnet = "deepseek/deepseek-v4-flash"
+    settings.model_opus = "deepseek/deepseek-v4-pro"
+    router = ModelRouter(settings)
+
+    with patch.object(router, "_get_classifier") as mock_get:
+        mock_cls = MagicMock()
+        mock_cls.classify.return_value = ComplexityResult(
+            complexity=TaskComplexity.SIMPLE,
+            classifier_model="deepseek-v4-flash",
+            latency_ms=100.0,
+        )
+        mock_get.return_value = mock_cls
+
+        resolved = router.resolve_with_classification(
+            "claude-sonnet-4-20250514", "What is 2+2?"
+        )
+
+    assert resolved.provider_model == "deepseek-v4-flash"
+    assert resolved.provider_id == "deepseek"
+
+
+def test_auto_route_routes_complex_task_to_opus_tier(settings):
+    """COMPLEX task routes to the opus-tier (pro) model."""
+    settings.auto_route_enabled = True
+    settings.model_sonnet = "deepseek/deepseek-v4-flash"
+    settings.model_opus = "deepseek/deepseek-v4-pro"
+    router = ModelRouter(settings)
+
+    with patch.object(router, "_get_classifier") as mock_get:
+        mock_cls = MagicMock()
+        mock_cls.classify.return_value = ComplexityResult(
+            complexity=TaskComplexity.COMPLEX,
+            classifier_model="deepseek-v4-flash",
+            latency_ms=150.0,
+        )
+        mock_get.return_value = mock_cls
+
+        resolved = router.resolve_with_classification(
+            "claude-sonnet-4-20250514", "Refactor auth module to use JWT"
+        )
+
+    assert resolved.provider_model == "deepseek-v4-pro"
+    assert resolved.provider_id == "deepseek"
+
+
+def test_auto_route_routes_very_complex_task_to_opus_tier(settings):
+    """VERY_COMPLEX task also routes to the opus-tier (pro) model."""
+    settings.auto_route_enabled = True
+    settings.model_sonnet = "deepseek/deepseek-v4-flash"
+    settings.model_opus = "deepseek/deepseek-v4-pro"
+    router = ModelRouter(settings)
+
+    with patch.object(router, "_get_classifier") as mock_get:
+        mock_cls = MagicMock()
+        mock_cls.classify.return_value = ComplexityResult(
+            complexity=TaskComplexity.VERY_COMPLEX,
+            classifier_model="deepseek-v4-flash",
+            latency_ms=200.0,
+        )
+        mock_get.return_value = mock_cls
+
+        resolved = router.resolve_with_classification(
+            "claude-sonnet-4-20250514", "Design a distributed cache system"
+        )
+
+    assert resolved.provider_model == "deepseek-v4-pro"
+    assert resolved.provider_id == "deepseek"
+    assert resolved.original_model == "claude-opus-4-20250514"
+
+
+def test_auto_route_falls_back_to_default_when_disabled(settings):
+    """When auto_route_enabled=False, resolve_with_classification == resolve()."""
+    settings.auto_route_enabled = False
+    settings.model = "nvidia_nim/fallback-model"
+    router = ModelRouter(settings)
+
+    resolved = router.resolve_with_classification(
+        "claude-sonnet-4-20250514", "Some task"
+    )
+
+    assert resolved.provider_model == "fallback-model"
+    assert resolved.provider_id == "nvidia_nim"
+    assert resolved.original_model == "claude-sonnet-4-20250514"
+
+
+def test_auto_route_lazy_inits_classifier(settings):
+    """TaskClassifier is only created when resolve_with_classification is called."""
+    settings.auto_route_enabled = True
+    settings.model_sonnet = "deepseek/deepseek-v4-flash"
+    router = ModelRouter(settings)
+
+    # Before any classification call, _task_classifier should be None
+    assert router._task_classifier is None
+
+    # Calling resolve (without classification) should not init the classifier
+    router.resolve("claude-sonnet-4-20250514")
+    assert router._task_classifier is None
+
+    # Calling resolve_with_classification should lazy-init
+    with patch.object(router, "_get_classifier", wraps=router._get_classifier) as spy:
+        with patch.object(TaskClassifier, "classify") as mock_classify:
+            mock_classify.return_value = ComplexityResult(
+                complexity=TaskComplexity.SIMPLE,
+                classifier_model="deepseek-v4-flash",
+                latency_ms=50.0,
+            )
+            router.resolve_with_classification(
+                "claude-sonnet-4-20250514", "test"
+            )
+            spy.assert_called_once()
