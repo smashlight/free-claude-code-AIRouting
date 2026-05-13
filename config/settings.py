@@ -195,6 +195,19 @@ class Settings(BaseSettings):
         default=None, validation_alias="ENABLE_HAIKU_THINKING"
     )
 
+    # ==================== AUTO_ROUTE (Task Complexity Routing) ====================
+    auto_route_enabled: bool = Field(
+        default=False, validation_alias="AUTO_ROUTE_ENABLED"
+    )
+    auto_route_classifier_model: str = Field(
+        default="deepseek/deepseek-v4-flash",
+        validation_alias="AUTO_ROUTE_CLASSIFIER_MODEL",
+    )
+    auto_route_complexity_threshold: float = Field(
+        default=0.5,
+        validation_alias="AUTO_ROUTE_COMPLEXITY_THRESHOLD",
+    )
+
     # ==================== HTTP Client Timeouts ====================
     http_read_timeout: float = Field(
         default=120.0, validation_alias="HTTP_READ_TIMEOUT"
@@ -395,7 +408,7 @@ class Settings(BaseSettings):
             )
         return v
 
-    @field_validator("model", "model_opus", "model_sonnet", "model_haiku")
+    @field_validator("model", "model_opus", "model_sonnet", "model_haiku", "auto_route_classifier_model")
     @classmethod
     def validate_model_format(cls, v: str | None) -> str | None:
         if v is None:

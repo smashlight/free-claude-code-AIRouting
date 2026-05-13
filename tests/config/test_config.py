@@ -260,6 +260,53 @@ class TestSettings:
         with pytest.raises(ValidationError, match="ENABLE_MODEL_THINKING"):
             Settings()
 
+    # ==================== AUTO_ROUTE Tests ====================
+
+    def test_auto_route_defaults(self, monkeypatch):
+        """AUTO_ROUTE fields have correct defaults when not set."""
+        from config.settings import Settings
+
+        monkeypatch.delenv("AUTO_ROUTE_ENABLED", raising=False)
+        monkeypatch.delenv("AUTO_ROUTE_CLASSIFIER_MODEL", raising=False)
+        monkeypatch.delenv("AUTO_ROUTE_COMPLEXITY_THRESHOLD", raising=False)
+        monkeypatch.setitem(Settings.model_config, "env_file", ())
+        settings = Settings()
+        assert settings.auto_route_enabled is False
+        assert settings.auto_route_classifier_model == "deepseek/deepseek-v4-flash"
+        assert settings.auto_route_complexity_threshold == 0.5
+
+    def test_auto_route_enabled_from_env(self, monkeypatch):
+        """AUTO_ROUTE_ENABLED env var is loaded."""
+        from config.settings import Settings
+
+        monkeypatch.setenv("AUTO_ROUTE_ENABLED", "true")
+        settings = Settings()
+        assert settings.auto_route_enabled is True
+
+    def test_auto_route_classifier_model_from_env(self, monkeypatch):
+        """AUTO_ROUTE_CLASSIFIER_MODEL env var is loaded and validated."""
+        from config.settings import Settings
+
+        monkeypatch.setenv("AUTO_ROUTE_CLASSIFIER_MODEL", "open_router/deepseek/deepseek-v4-flash")
+        settings = Settings()
+        assert settings.auto_route_classifier_model == "open_router/deepseek/deepseek-v4-flash"
+
+    def test_auto_route_invalid_classifier_model_raises(self, monkeypatch):
+        """Invalid provider in AUTO_ROUTE_CLASSIFIER_MODEL raises ValidationError."""
+        from config.settings import Settings
+
+        monkeypatch.setenv("AUTO_ROUTE_CLASSIFIER_MODEL", "invalid_provider/model")
+        with pytest.raises(ValidationError, match="Invalid provider"):
+            Settings()
+
+    def test_auto_route_classifier_model_no_prefix_raises(self, monkeypatch):
+        """AUTO_ROUTE_CLASSIFIER_MODEL without provider prefix raises."""
+        from config.settings import Settings
+
+        monkeypatch.setenv("AUTO_ROUTE_CLASSIFIER_MODEL", "no-prefix")
+        with pytest.raises(ValidationError, match="provider type"):
+            Settings()
+
 
 # --- NimSettings Validation Tests ---
 class TestNimSettingsValidBounds:
