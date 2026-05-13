@@ -211,7 +211,7 @@ def test_model_router_logs_mapping(settings):
 def test_auto_route_routes_simple_task_to_haiku_tier(settings):
     """SIMPLE task routes to the haiku-tier (cheapest) model."""
     settings.auto_route_enabled = True
-    settings.model_haiku = "open_router/free"
+    settings.model_haiku = "open_router/auto"
     settings.model_opus = "deepseek/deepseek-v4-pro"
     router = ModelRouter(settings)
 
@@ -228,7 +228,7 @@ def test_auto_route_routes_simple_task_to_haiku_tier(settings):
             "claude-sonnet-4-20250514", "What is 2+2?"
         )
 
-    assert resolved.provider_model == "free"
+    assert resolved.provider_model == "auto"
     assert resolved.provider_id == "open_router"
 
 
