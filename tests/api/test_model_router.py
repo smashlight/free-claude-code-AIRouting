@@ -232,8 +232,8 @@ def test_auto_route_routes_simple_task_to_haiku_tier(settings):
     assert resolved.provider_id == "open_router"
 
 
-def test_auto_route_routes_complex_task_to_opus_tier(settings):
-    """COMPLEX task routes to the opus-tier (pro) model."""
+def test_auto_route_routes_complex_task_to_sonnet_tier(settings):
+    """COMPLEX task routes to the sonnet-tier (flash) model."""
     settings.auto_route_enabled = True
     settings.model_sonnet = "deepseek/deepseek-v4-flash"
     settings.model_opus = "deepseek/deepseek-v4-pro"
@@ -252,7 +252,7 @@ def test_auto_route_routes_complex_task_to_opus_tier(settings):
             "claude-sonnet-4-20250514", "Refactor auth module to use JWT"
         )
 
-    assert resolved.provider_model == "deepseek-v4-pro"
+    assert resolved.provider_model == "deepseek-v4-flash"
     assert resolved.provider_id == "deepseek"
 
 
