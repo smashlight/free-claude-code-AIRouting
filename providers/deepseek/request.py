@@ -371,6 +371,38 @@ def _normalize_tool_result_content(messages: Any) -> Any:
     return normalized
 
 
+def _ensure_text_after_tool_results(messages: list) -> list:
+    """Ensure user messages with tool_result blocks also have a text block.
+
+    DeepSeek V4 Pro requires that every ``tool_result`` block is followed by
+    at least one ``text`` block in the same user message. If a user message
+    contains only ``tool_result`` blocks, an empty continuation text block
+    is appended.
+
+    Without this, DeepSeek returns HTTP 400 with a misleading error about
+    ``content[].thinking`` mode.
+    """
+    result: list[Any] = []
+    for msg in messages:
+        if not isinstance(msg, dict) or msg.get("role") != "user":
+            result.append(msg)
+            continue
+        content = msg.get("content")
+        if not isinstance(content, list):
+            result.append(msg)
+            continue
+        # Check if every block is a tool_result
+        if content and all(
+            isinstance(b, dict) and b.get("type") == "tool_result" for b in content
+        ):
+            new_msg = dict(msg)
+            new_msg["content"] = [*content, {"type": "text", "text": "[continuation]"}]
+            result.append(new_msg)
+        else:
+            result.append(msg)
+    return result
+
+
 def _strip_reasoning_content_when_native(messages: Any) -> Any:
     """``reasoning_content`` is OpenAI-helper metadata; not part of native Anthropic body."""
     if not isinstance(messages, list):
@@ -440,10 +472,12 @@ def build_request_body(request_data: Any, *, thinking_enabled: bool) -> dict:
 
     if "messages" in data:
         data["messages"] = _strip_reasoning_content_when_native(
-            _normalize_tool_result_content(
-                sanitize_deepseek_messages_for_native(
-                    data["messages"],
-                    thinking_enabled=effective_thinking_enabled,
+            _ensure_text_after_tool_results(
+                _normalize_tool_result_content(
+                    sanitize_deepseek_messages_for_native(
+                        data["messages"],
+                        thinking_enabled=effective_thinking_enabled,
+                    )
                 )
             )
         )
