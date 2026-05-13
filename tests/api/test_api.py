@@ -246,3 +246,121 @@ def test_stop_endpoint_no_handler_no_cli_503(client: TestClient):
         delattr(app.state, "cli_manager")
     response = client.post("/stop")
     assert response.status_code == 503
+
+
+# =============================================================================
+# _extract_messages_text tests
+# =============================================================================
+
+
+def test_extract_messages_text_empty():
+    """Empty messages produce empty string."""
+    from api.services import _extract_messages_text
+
+    assert _extract_messages_text([]) == ""
+
+
+def test_extract_messages_text_simple_content():
+    """String content messages are extracted correctly."""
+    from api.services import _extract_messages_text
+    from api.models.anthropic import Message
+
+    messages = [
+        Message(role="user", content="Hello"),
+        Message(role="assistant", content="Hi there!"),
+        Message(role="user", content="What is the capital of France?"),
+    ]
+    text = _extract_messages_text(messages)
+    assert "Hello" in text
+    assert "Hi there!" in text
+    assert "What is the capital" in text
+    assert text.count("user:") == 2
+    assert text.count("assistant:") == 1
+
+
+def test_extract_messages_text_respects_max_messages():
+    """Only the last N messages are included."""
+    from api.services import _extract_messages_text
+    from api.models.anthropic import Message
+
+    messages = [Message(role="user", content=str(i)) for i in range(10)]
+    text = _extract_messages_text(messages, max_messages=3)
+    assert "7" in text
+    assert "9" in text
+    # "0" should be beyond the window
+    assert "user: 0" not in text
+
+
+def test_extract_messages_text_truncates_long_content():
+    """Content longer than 500 chars is truncated."""
+    from api.services import _extract_messages_text
+    from api.models.anthropic import Message
+
+    long_content = "a" * 1000
+    messages = [Message(role="user", content=long_content)]
+    text = _extract_messages_text(messages)
+    assert text.endswith("...")
+    assert len(text) < 550  # role prefix + 500 trunc + ...
+
+
+def test_extract_messages_text_content_blocks():
+    """ContentBlock list messages are handled correctly."""
+    from api.services import _extract_messages_text
+    from api.models.anthropic import (
+        ContentBlockText,
+        ContentBlockToolResult,
+        ContentBlockToolUse,
+        Message,
+    )
+
+    messages = [
+        Message(role="user", content=[ContentBlockText(type="text", text="Read file foo.py")]),
+        Message(
+            role="assistant",
+            content=[
+                ContentBlockText(type="text", text="Here's the content:"),
+                ContentBlockToolUse(
+                    type="tool_use", id="tu1", name="Read", input={"path": "foo.py"}
+                ),
+            ],
+        ),
+        Message(
+            role="user",
+            content=[
+                ContentBlockToolResult(type="tool_result", tool_use_id="tu1", content="file content here"),
+                ContentBlockText(type="text", text="Now refactor it to use async"),
+            ],
+        ),
+    ]
+    text = _extract_messages_text(messages)
+    assert "Read file foo.py" in text
+    assert "Here's the content:" in text
+    assert "Now refactor it" in text
+    # tool_result content should be replaced with marker
+    assert "file content here" not in text
+    assert "[tool_result]" in text
+    # tool_use should remain as descriptive marker
+    assert "Read" in text or "[tool_use]" in text
+
+
+def test_extract_messages_text_skips_thinking_blocks():
+    """Thinking and redacted_thinking blocks are excluded."""
+    from api.services import _extract_messages_text
+    from api.models.anthropic import (
+        ContentBlockText,
+        ContentBlockThinking,
+        Message,
+    )
+
+    messages = [
+        Message(
+            role="assistant",
+            content=[
+                ContentBlockThinking(type="thinking", thinking="internal reasoning", signature="sig1"),
+                ContentBlockText(type="text", text="Final answer"),
+            ],
+        )
+    ]
+    text = _extract_messages_text(messages)
+    assert "Final answer" in text
+    assert "internal reasoning" not in text

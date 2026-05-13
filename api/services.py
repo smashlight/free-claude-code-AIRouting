@@ -18,7 +18,7 @@ from core.trace import api_messages_request_snapshot, trace_event, traced_async_
 from providers.base import BaseProvider
 from providers.exceptions import InvalidRequestError, ProviderError
 
-from .model_router import ModelRouter
+from .model_router import ModelRouter, RoutedMessagesRequest
 from .models.anthropic import MessagesRequest, TokenCountRequest
 from .models.responses import TokenCountResponse
 from .optimization_handlers import try_optimizations
@@ -79,6 +79,43 @@ def _log_unexpected_service_exception(
         logger.error("{} exc_type={}", context, type(exc).__name__)
 
 
+def _extract_messages_text(messages: list, max_messages: int = 5) -> str:
+    """Extract recent message text for AUTO_ROUTE classification.
+
+    Takes the last N messages and extracts text content blocks, excluding
+    large tool results and internal thinking blocks. Each message text is
+    truncated to 500 chars to keep the classification prompt fast and cheap.
+    """
+    parts: list[str] = []
+    for msg in messages[-max_messages:]:
+        role = msg.role if hasattr(msg, 'role') else '?'
+        content = msg.content if hasattr(msg, 'content') else ''
+
+        if isinstance(content, str):
+            text = content
+        elif isinstance(content, list):
+            text_blocks: list[str] = []
+            for block in content:
+                btype = getattr(block, 'type', None) or ''
+                if btype == 'tool_result':
+                    text_blocks.append('[tool_result]')
+                elif btype in ('thinking', 'redacted_thinking'):
+                    continue  # skip internal thinking blocks
+                elif hasattr(block, 'text'):
+                    text_blocks.append(block.text)
+                else:
+                    text_blocks.append(f'[{btype}]')
+            text = ' | '.join(text_blocks)
+        else:
+            continue
+
+        if len(text) > 500:
+            text = text[:500] + '...'
+        parts.append(f'{role}: {text}')
+
+    return '\n\n'.join(parts)
+
+
 def _require_non_empty_messages(messages: list[Any]) -> None:
     if not messages:
         raise InvalidRequestError("messages cannot be empty")
@@ -104,7 +141,19 @@ class ClaudeProxyService:
         try:
             _require_non_empty_messages(request_data.messages)
 
-            routed = self._model_router.resolve_messages_request(request_data)
+            if self._settings.auto_route_enabled:
+                messages_text = _extract_messages_text(request_data.messages)
+                resolved = self._model_router.resolve_with_classification(
+                    request_data.model, messages_text
+                )
+                routed = RoutedMessagesRequest(
+                    request=request_data.model_copy(
+                        update={"model": resolved.provider_model}, deep=True
+                    ),
+                    resolved=resolved,
+                )
+            else:
+                routed = self._model_router.resolve_messages_request(request_data)
             if routed.resolved.provider_id in _OPENAI_CHAT_UPSTREAM_IDS:
                 tool_err = openai_chat_upstream_server_tool_error(
                     routed.request,
