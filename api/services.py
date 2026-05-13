@@ -88,32 +88,32 @@ def _extract_messages_text(messages: list, max_messages: int = 5) -> str:
     """
     parts: list[str] = []
     for msg in messages[-max_messages:]:
-        role = msg.role if hasattr(msg, 'role') else '?'
-        content = msg.content if hasattr(msg, 'content') else ''
+        role = msg.role if hasattr(msg, "role") else "?"
+        content = msg.content if hasattr(msg, "content") else ""
 
         if isinstance(content, str):
             text = content
         elif isinstance(content, list):
             text_blocks: list[str] = []
             for block in content:
-                btype = getattr(block, 'type', None) or ''
-                if btype == 'tool_result':
-                    text_blocks.append('[tool_result]')
-                elif btype in ('thinking', 'redacted_thinking'):
+                btype = getattr(block, "type", None) or ""
+                if btype == "tool_result":
+                    text_blocks.append("[tool_result]")
+                elif btype in ("thinking", "redacted_thinking"):
                     continue  # skip internal thinking blocks
-                elif hasattr(block, 'text'):
+                elif hasattr(block, "text"):
                     text_blocks.append(block.text)
                 else:
-                    text_blocks.append(f'[{btype}]')
-            text = ' | '.join(text_blocks)
+                    text_blocks.append(f"[{btype}]")
+            text = " | ".join(text_blocks)
         else:
             continue
 
         if len(text) > 500:
-            text = text[:500] + '...'
-        parts.append(f'{role}: {text}')
+            text = text[:500] + "..."
+        parts.append(f"{role}: {text}")
 
-    return '\n\n'.join(parts)
+    return "\n\n".join(parts)
 
 
 def _require_non_empty_messages(messages: list[Any]) -> None:

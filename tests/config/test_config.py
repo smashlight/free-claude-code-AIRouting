@@ -287,9 +287,14 @@ class TestSettings:
         """AUTO_ROUTE_CLASSIFIER_MODEL env var is loaded and validated."""
         from config.settings import Settings
 
-        monkeypatch.setenv("AUTO_ROUTE_CLASSIFIER_MODEL", "open_router/deepseek/deepseek-v4-flash")
+        monkeypatch.setenv(
+            "AUTO_ROUTE_CLASSIFIER_MODEL", "open_router/deepseek/deepseek-v4-flash"
+        )
         settings = Settings()
-        assert settings.auto_route_classifier_model == "open_router/deepseek/deepseek-v4-flash"
+        assert (
+            settings.auto_route_classifier_model
+            == "open_router/deepseek/deepseek-v4-flash"
+        )
 
     def test_auto_route_invalid_classifier_model_raises(self, monkeypatch):
         """Invalid provider in AUTO_ROUTE_CLASSIFIER_MODEL raises ValidationError."""

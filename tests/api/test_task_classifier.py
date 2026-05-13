@@ -6,7 +6,6 @@ import pytest
 
 from api.task_classifier import (
     CLASSIFICATION_PROMPT,
-    ComplexityResult,
     TaskClassifier,
     TaskComplexity,
 )
@@ -195,7 +194,9 @@ def test_classifier_truncates_long_input(settings):
     # Verify the prompt was truncated to 2000 chars
     call_kwargs = mock_http.post.call_args[1]
     prompt_sent = call_kwargs["json"]["messages"][0]["content"]
-    assert len(prompt_sent) <= 2000 + len("...") + len(CLASSIFICATION_PROMPT.split("{messages_text}")[0]) + len(CLASSIFICATION_PROMPT.split("{messages_text}")[1])
+    assert len(prompt_sent) <= 2000 + len("...") + len(
+        CLASSIFICATION_PROMPT.split("{messages_text}")[0]
+    ) + len(CLASSIFICATION_PROMPT.split("{messages_text}")[1])
     classifier.close()
 
 

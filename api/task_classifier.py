@@ -15,7 +15,6 @@ from loguru import logger
 
 from config.settings import Settings
 
-
 CLASSIFICATION_PROMPT = """\
 Classify this coding task complexity. Respond with ONLY one word: SIMPLE, COMPLEX, or VERY_COMPLEX.
 
@@ -104,9 +103,7 @@ class TaskClassifier:
         """
         start = time.monotonic()
 
-        prompt = CLASSIFICATION_PROMPT.format(
-            messages_text=messages_text[:2000]
-        )
+        prompt = CLASSIFICATION_PROMPT.format(messages_text=messages_text[:2000])
 
         try:
             if self._classifier_provider == "deepseek":

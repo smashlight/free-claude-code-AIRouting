@@ -310,14 +310,14 @@ def test_auto_route_lazy_inits_classifier(settings):
     assert router._task_classifier is None
 
     # Calling resolve_with_classification should lazy-init
-    with patch.object(router, "_get_classifier", wraps=router._get_classifier) as spy:
-        with patch.object(TaskClassifier, "classify") as mock_classify:
-            mock_classify.return_value = ComplexityResult(
-                complexity=TaskComplexity.SIMPLE,
-                classifier_model="deepseek-v4-flash",
-                latency_ms=50.0,
-            )
-            router.resolve_with_classification(
-                "claude-sonnet-4-20250514", "test"
-            )
-            spy.assert_called_once()
+    with (
+        patch.object(router, "_get_classifier", wraps=router._get_classifier) as spy,
+        patch.object(TaskClassifier, "classify") as mock_classify,
+    ):
+        mock_classify.return_value = ComplexityResult(
+            complexity=TaskComplexity.SIMPLE,
+            classifier_model="deepseek-v4-flash",
+            latency_ms=50.0,
+        )
+        router.resolve_with_classification("claude-sonnet-4-20250514", "test")
+        spy.assert_called_once()

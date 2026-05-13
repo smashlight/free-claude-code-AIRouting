@@ -262,8 +262,8 @@ def test_extract_messages_text_empty():
 
 def test_extract_messages_text_simple_content():
     """String content messages are extracted correctly."""
-    from api.services import _extract_messages_text
     from api.models.anthropic import Message
+    from api.services import _extract_messages_text
 
     messages = [
         Message(role="user", content="Hello"),
@@ -280,8 +280,8 @@ def test_extract_messages_text_simple_content():
 
 def test_extract_messages_text_respects_max_messages():
     """Only the last N messages are included."""
-    from api.services import _extract_messages_text
     from api.models.anthropic import Message
+    from api.services import _extract_messages_text
 
     messages = [Message(role="user", content=str(i)) for i in range(10)]
     text = _extract_messages_text(messages, max_messages=3)
@@ -293,8 +293,8 @@ def test_extract_messages_text_respects_max_messages():
 
 def test_extract_messages_text_truncates_long_content():
     """Content longer than 500 chars is truncated."""
-    from api.services import _extract_messages_text
     from api.models.anthropic import Message
+    from api.services import _extract_messages_text
 
     long_content = "a" * 1000
     messages = [Message(role="user", content=long_content)]
@@ -305,16 +305,19 @@ def test_extract_messages_text_truncates_long_content():
 
 def test_extract_messages_text_content_blocks():
     """ContentBlock list messages are handled correctly."""
-    from api.services import _extract_messages_text
     from api.models.anthropic import (
         ContentBlockText,
         ContentBlockToolResult,
         ContentBlockToolUse,
         Message,
     )
+    from api.services import _extract_messages_text
 
     messages = [
-        Message(role="user", content=[ContentBlockText(type="text", text="Read file foo.py")]),
+        Message(
+            role="user",
+            content=[ContentBlockText(type="text", text="Read file foo.py")],
+        ),
         Message(
             role="assistant",
             content=[
@@ -327,7 +330,9 @@ def test_extract_messages_text_content_blocks():
         Message(
             role="user",
             content=[
-                ContentBlockToolResult(type="tool_result", tool_use_id="tu1", content="file content here"),
+                ContentBlockToolResult(
+                    type="tool_result", tool_use_id="tu1", content="file content here"
+                ),
                 ContentBlockText(type="text", text="Now refactor it to use async"),
             ],
         ),
@@ -345,18 +350,20 @@ def test_extract_messages_text_content_blocks():
 
 def test_extract_messages_text_skips_thinking_blocks():
     """Thinking and redacted_thinking blocks are excluded."""
-    from api.services import _extract_messages_text
     from api.models.anthropic import (
         ContentBlockText,
         ContentBlockThinking,
         Message,
     )
+    from api.services import _extract_messages_text
 
     messages = [
         Message(
             role="assistant",
             content=[
-                ContentBlockThinking(type="thinking", thinking="internal reasoning", signature="sig1"),
+                ContentBlockThinking(
+                    type="thinking", thinking="internal reasoning", signature="sig1"
+                ),
                 ContentBlockText(type="text", text="Final answer"),
             ],
         )

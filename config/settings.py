@@ -408,7 +408,13 @@ class Settings(BaseSettings):
             )
         return v
 
-    @field_validator("model", "model_opus", "model_sonnet", "model_haiku", "auto_route_classifier_model")
+    @field_validator(
+        "model",
+        "model_opus",
+        "model_sonnet",
+        "model_haiku",
+        "auto_route_classifier_model",
+    )
     @classmethod
     def validate_model_format(cls, v: str | None) -> str | None:
         if v is None:
