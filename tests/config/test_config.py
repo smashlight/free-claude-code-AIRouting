@@ -34,7 +34,10 @@ class TestSettings:
         assert isinstance(settings.provider_rate_window, int)
         assert isinstance(settings.nim.temperature, float)
         assert isinstance(settings.fast_prefix_detection, bool)
-        assert isinstance(settings.enable_model_thinking, bool)
+        assert settings.enable_model_thinking is False
+        assert settings.enable_opus_thinking is True
+        assert settings.enable_sonnet_thinking is True
+        assert settings.enable_haiku_thinking is False
         assert settings.http_read_timeout == 120.0
         assert settings.http_connect_timeout == HTTP_CONNECT_TIMEOUT_DEFAULT
         assert settings.enable_web_server_tools is False
@@ -197,7 +200,7 @@ class TestSettings:
         monkeypatch.setenv("ENABLE_HAIKU_THINKING", "false")
         settings = Settings()
         assert settings.resolve_thinking("claude-opus-4-20250514") is True
-        assert settings.resolve_thinking("claude-sonnet-4-20250514") is False
+        assert settings.resolve_thinking("claude-sonnet-4-20250514") is True
         assert settings.resolve_thinking("claude-haiku-4-20250514") is False
         assert settings.resolve_thinking("unknown-model") is False
 
@@ -268,12 +271,10 @@ class TestSettings:
 
         monkeypatch.delenv("AUTO_ROUTE_ENABLED", raising=False)
         monkeypatch.delenv("AUTO_ROUTE_CLASSIFIER_MODEL", raising=False)
-        monkeypatch.delenv("AUTO_ROUTE_COMPLEXITY_THRESHOLD", raising=False)
         monkeypatch.setitem(Settings.model_config, "env_file", ())
         settings = Settings()
         assert settings.auto_route_enabled is False
         assert settings.auto_route_classifier_model == "deepseek/deepseek-v4-flash"
-        assert settings.auto_route_complexity_threshold == 0.5
 
     def test_auto_route_enabled_from_env(self, monkeypatch):
         """AUTO_ROUTE_ENABLED env var is loaded."""
@@ -287,14 +288,17 @@ class TestSettings:
         """AUTO_ROUTE_CLASSIFIER_MODEL env var is loaded and validated."""
         from config.settings import Settings
 
-        monkeypatch.setenv(
-            "AUTO_ROUTE_CLASSIFIER_MODEL", "open_router/deepseek/deepseek-v4-flash"
-        )
+        monkeypatch.setenv("AUTO_ROUTE_CLASSIFIER_MODEL", "deepseek/deepseek-v4-flash")
         settings = Settings()
-        assert (
-            settings.auto_route_classifier_model
-            == "open_router/deepseek/deepseek-v4-flash"
-        )
+        assert settings.auto_route_classifier_model == "deepseek/deepseek-v4-flash"
+
+    def test_auto_route_classifier_model_openrouter_raises(self, monkeypatch):
+        """AUTO_ROUTE_CLASSIFIER_MODEL is DeepSeek-only until other callers exist."""
+        from config.settings import Settings
+
+        monkeypatch.setenv("AUTO_ROUTE_CLASSIFIER_MODEL", "open_router/auto")
+        with pytest.raises(ValidationError, match=r"supports only.*DeepSeek"):
+            Settings()
 
     def test_auto_route_invalid_classifier_model_raises(self, monkeypatch):
         """Invalid provider in AUTO_ROUTE_CLASSIFIER_MODEL raises ValidationError."""

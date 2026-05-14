@@ -183,16 +183,16 @@ class Settings(BaseSettings):
         default=5, validation_alias="PROVIDER_MAX_CONCURRENCY"
     )
     enable_model_thinking: bool = Field(
-        default=True, validation_alias="ENABLE_MODEL_THINKING"
+        default=False, validation_alias="ENABLE_MODEL_THINKING"
     )
     enable_opus_thinking: bool | None = Field(
-        default=None, validation_alias="ENABLE_OPUS_THINKING"
+        default=True, validation_alias="ENABLE_OPUS_THINKING"
     )
     enable_sonnet_thinking: bool | None = Field(
-        default=None, validation_alias="ENABLE_SONNET_THINKING"
+        default=True, validation_alias="ENABLE_SONNET_THINKING"
     )
     enable_haiku_thinking: bool | None = Field(
-        default=None, validation_alias="ENABLE_HAIKU_THINKING"
+        default=False, validation_alias="ENABLE_HAIKU_THINKING"
     )
 
     # ==================== AUTO_ROUTE (Task Complexity Routing) ====================
@@ -203,11 +203,6 @@ class Settings(BaseSettings):
         default="deepseek/deepseek-v4-flash",
         validation_alias="AUTO_ROUTE_CLASSIFIER_MODEL",
     )
-    auto_route_complexity_threshold: float = Field(
-        default=0.5,
-        validation_alias="AUTO_ROUTE_COMPLEXITY_THRESHOLD",
-    )
-
     # ==================== HTTP Client Timeouts ====================
     http_read_timeout: float = Field(
         default=120.0, validation_alias="HTTP_READ_TIMEOUT"
@@ -429,6 +424,18 @@ class Settings(BaseSettings):
         if provider not in SUPPORTED_PROVIDER_IDS:
             supported = ", ".join(f"'{p}'" for p in SUPPORTED_PROVIDER_IDS)
             raise ValueError(f"Invalid provider: '{provider}'. Supported: {supported}")
+        return v
+
+    @field_validator("auto_route_classifier_model")
+    @classmethod
+    def validate_auto_route_classifier_model(cls, v: str) -> str:
+        """AUTO_ROUTE classification currently uses DeepSeek's Messages API."""
+        provider = Settings.parse_provider_type(v)
+        if provider != "deepseek":
+            raise ValueError(
+                "AUTO_ROUTE_CLASSIFIER_MODEL currently supports only "
+                "DeepSeek models, e.g. deepseek/deepseek-v4-flash"
+            )
         return v
 
     @model_validator(mode="after")
