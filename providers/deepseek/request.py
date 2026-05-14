@@ -500,32 +500,30 @@ def build_request_body(request_data: Any, *, thinking_enabled: bool) -> dict:
     _validate_deepseek_native_request_dict(data)
     data.pop("extra_body", None)
 
-    has_tool_history = _has_tool_history(data)
-    has_replayable_tool_thinking = _has_replayable_tool_thinking(data)
-    unsafe_tool_followup = has_tool_history and not has_replayable_tool_thinking
-    effective_thinking_enabled = thinking_enabled and not unsafe_tool_followup
+    effective_thinking_enabled = thinking_enabled
     if thinking_enabled:
-        if unsafe_tool_followup:
+        has_tool_history = _has_tool_history(data)
+        has_replayable_tool_thinking = _has_replayable_tool_thinking(data)
+        if has_tool_history and not has_replayable_tool_thinking:
             logger.debug(
-                "DEEPSEEK_REQUEST: disabling thinking for tool follow-up without "
-                "replayable thinking model={} msgs={} tools={}",
+                "DEEPSEEK_REQUEST: tool follow-up without replayable thinking "
+                "model={} msgs={} tools={} — keeping thinking enabled",
                 data.get("model"),
                 len(data.get("messages", [])),
                 len(data.get("tools", [])),
             )
-            _remove_deepseek_thinking_hints(data)
         elif has_tool_history:
             logger.debug(
-                "DEEPSEEK_REQUEST: keeping thinking for tool follow-up with "
-                "replayable thinking model={} msgs={} tools={}",
+                "DEEPSEEK_REQUEST: tool follow-up with replayable thinking "
+                "model={} msgs={} tools={} — keeping thinking enabled",
                 data.get("model"),
                 len(data.get("messages", [])),
                 len(data.get("tools", [])),
             )
         elif data.get("tools") or data.get("tool_choice"):
             logger.debug(
-                "DEEPSEEK_REQUEST: keeping thinking for initial tool request "
-                "model={} msgs={} tools={}",
+                "DEEPSEEK_REQUEST: initial tool request "
+                "model={} msgs={} tools={} — keeping thinking enabled",
                 data.get("model"),
                 len(data.get("messages", [])),
                 len(data.get("tools", [])),
