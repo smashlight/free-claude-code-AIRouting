@@ -37,6 +37,13 @@ class TaskComplexity(StrEnum):
     VERY_COMPLEX = "VERY_COMPLEX"
 
 
+_CLASSIFIER_SYSTEM_PROMPT = (
+    "You are a task complexity classifier. "
+    "Respond with ONLY one word: SIMPLE, COMPLEX, or VERY_COMPLEX. "
+    "Do NOT include any reasoning, thinking, or explanation."
+)
+
+
 @dataclass(frozen=True)
 class ComplexityResult:
     """Result of a task complexity classification call."""
@@ -145,8 +152,9 @@ class TaskClassifier:
             },
             json={
                 "model": self._classifier_model,
-                "max_tokens": 50,
+                "max_tokens": 300,
                 "temperature": 0,
+                "system": _CLASSIFIER_SYSTEM_PROMPT,
                 "messages": [{"role": "user", "content": prompt}],
             },
         )
